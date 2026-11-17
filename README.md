@@ -1,0 +1,56 @@
+# SWES: prova de conceito
+
+Material de apoio ao Projeto de Conclusão de Curso **"SWES: Middleware Orientado pelo OWASP ASVS para Autorização Contínua em Servidores Socket.IO"** (Ciência da Computação, URI Santo Ângelo, 2026). Contém os dois experimentos preliminares citados no PCC. O middleware SWES em si será desenvolvido na etapa seguinte (TCC).
+
+O código, os comentários e as saídas dos scripts estão em inglês; este README está em português.
+
+## Requisitos
+
+- Node.js 18 ou superior (os resultados abaixo foram obtidos com Node 22.23.4, em Linux).
+- Versões fixadas no `package-lock.json`: socket.io 4.8.4, socket.io-client 4.8.1, jsonwebtoken 9.0.2.
+
+## Como executar
+
+```bash
+cd proof-of-concept
+npm ci                  # instala exatamente as versões do package-lock.json
+npm run window          # experimento 1, como no PCC: 10 repetições, limite de 20 s (cerca de 10 min)
+npm run window:quick    # experimento 1 em versão curta, só para conferir (cerca de 1 min)
+npm run sid             # experimento 2 (alguns segundos)
+```
+
+Os dois scripts sobem servidor e cliente próprios em `127.0.0.1` e não fazem nenhuma requisição externa. Não use estes scripts contra sistemas de terceiros.
+
+## Experimento 1: janela de autorização residual (`residual-window.js`)
+
+Mede por quanto tempo uma conexão Socket.IO continua trocando eventos depois que a credencial deixa de valer.
+
+- **Configuração A (documentação):** o token JWT é verificado só no handshake, como a documentação oficial ensina.
+- **Configuração B (protótipo do Portão 2):** acrescenta temporizador de expiração, canal de revogação e verificação a cada evento.
+- **Cenários:** token válido por 5 s (`expiration`) ou revogado 3 s após a conexão (`revocation`). Servidor e cliente trocam um evento por segundo em cada sentido. `t0` é o instante em que a credencial deixa de valer.
+- **Uso direto:** `node residual-window.js [repetições] [limite em segundos]`.
+
+Resultado obtido (`results/residual-window.txt`, 10 repetições, limite de 20 s):
+
+| Configuração | Janela residual (mediana; máximo) | Eventos entregues ao cliente após t0 | Eventos aceitos pelo servidor após t0 |
+|---|---|---|---|
+| A (documentação) | > 20 s em 10/10 (conexão ativa no limite) | 20 | 20 |
+| B (protótipo do Portão 2) | 2 ms; 3 ms (expiração) · 1 ms; 2 ms (revogação) | 0 | 0 |
+
+Em A, expiração e revogação tiveram o mesmo resultado; em B, a conexão foi encerrada em até 3 ms nos dois cenários. Os milissegundos variam um pouco de execução para execução e de máquina para máquina; o padrão (A ativa no limite, B encerrada em poucos milissegundos) é o que se repete.
+
+## Experimento 2: identificador de sessão na URL (`sid-in-url.js`)
+
+Verifica se o identificador da sessão de transporte (`sid`) do Engine.IO aparece nas URLs registradas pelo servidor e se, no long-polling, quem conhece apenas o `sid`, sem o JWT, consegue enviar eventos na sessão autenticada.
+
+Resultado obtido (`results/sid-in-url.txt`, socket.io 4.8.4, engine.io 6.6.11):
+
+- **Transporte padrão** (long-polling seguido de WebSocket): 3 de 4 URLs levam o `sid`. Depois da promoção para WebSocket, a injeção apenas com o `sid` foi recusada (HTTP 400).
+- **Cliente só em long-polling:** 3 de 4 URLs levam o `sid`, e a injeção apenas com o `sid` foi aceita (HTTP 200) e processada como o usuário autenticado.
+- **Só WebSocket:** nenhuma URL leva o `sid`.
+
+`SHOW=1 node sid-in-url.js` exibe as URLs registradas, com o `sid` mascarado.
+
+## Licença e citação
+
+Código sob licença MIT (ver `LICENSE`). Para citar, use os dados de `CITATION.cff` e a versão (tag) `pcc-2026`.

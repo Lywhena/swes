@@ -1,0 +1,10 @@
+socket.io 4.8.4 · engine.io 6.6.11 · node v22.23.4
+┌─────────┬───────────────────────────────────────────┬───────────────────────┬─────────────────┬─────────────┬───────────────┬──────────────────────────────────────────────────┐
+│ (index) │ scenario                                  │ connected             │ final_transport │ logged_urls │ urls_with_sid │ injection_with_sid_only                          │
+├─────────┼───────────────────────────────────────────┼───────────────────────┼─────────────────┼─────────────┼───────────────┼──────────────────────────────────────────────────┤
+│ 0       │ 'default (polling + upgrade)'             │ 'yes'                 │ 'websocket'     │ 4           │ 3             │ 'HTTP 400; event processed as nobody (rejected)' │
+│ 1       │ 'client polling only'                     │ 'yes'                 │ 'polling'       │ 4           │ 3             │ 'HTTP 200; event processed as collector-1'       │
+│ 2       │ 'client websocket only'                   │ 'yes'                 │ 'websocket'     │ 1           │ 0             │ 'HTTP 400; event processed as nobody (rejected)' │
+│ 3       │ 'server websocket only, default client'   │ 'no (xhr poll error)' │ '-'             │ 1           │ 0             │ 'not tested'                                     │
+│ 4       │ 'server websocket only, websocket client' │ 'yes'                 │ 'websocket'     │ 1           │ 0             │ 'HTTP 400; event processed as nobody (rejected)' │
+└─────────┴───────────────────────────────────────────┴───────────────────────┴─────────────────┴─────────────┴───────────────┴──────────────────────────────────────────────────┘

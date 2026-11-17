@@ -1,0 +1,19 @@
+{
+  "name": "swes-proof-of-concept",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Preliminary experiments for the SWES project: residual authorization window and session identifier in the URL with Socket.IO 4.8.4",
+  "license": "MIT",
+  "author": "Helena Pires Veltri",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "window": "node residual-window.js 10 20",
+    "window:quick": "node residual-window.js 2 5",
+    "sid": "node sid-in-url.js"
+  },
+  "dependencies": {
+    "jsonwebtoken": "9.0.2",
+    "socket.io": "4.8.4",
+    "socket.io-client": "4.8.1"
+  }
+}
