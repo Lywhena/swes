@@ -14,7 +14,7 @@ const crypto = require("node:crypto");
 const SECRET = crypto.randomBytes(32);
 const PAYLOAD = "INJECTED-WITHOUT-TOKEN";
 
-async function scenario(name, serverOptions, clientOptions, tryInjection) {
+const scenario = async (name, serverOptions, clientOptions, tryInjection) => {
   const urls = [];
   const httpServer = http.createServer();
   const io = new Server(httpServer, serverOptions);
@@ -67,7 +67,7 @@ async function scenario(name, serverOptions, clientOptions, tryInjection) {
   return result;
 }
 
-function engineVersion() {
+const engineVersion = () => {
   let dir = path.dirname(require.resolve("engine.io")); // walk up to engine.io's own package.json
   while (!fs.existsSync(path.join(dir, "package.json")) || JSON.parse(fs.readFileSync(path.join(dir, "package.json"))).name !== "engine.io") dir = path.dirname(dir);
   return JSON.parse(fs.readFileSync(path.join(dir, "package.json"))).version;

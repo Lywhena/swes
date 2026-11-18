@@ -3,6 +3,7 @@
 // B = A + Gate 2 prototype (expiration timer, revocation channel and per-event check)
 //
 // Usage: node residual-window.js [repetitions] [limitSeconds]
+// DETAIL=1 node residual-window.js ... also prints each run (to stderr), without changing the final table.
 // Local lab only: server and client run on 127.0.0.1, with no external requests.
 "use strict";
 const http = require("node:http");
@@ -16,13 +17,13 @@ const REPETITIONS = Number(process.argv[2] || 5);
 const LIMIT_MS = Number(process.argv[3] || 30) * 1000; // test time limit (censoring in A)
 const ALGORITHMS = ["HS256"];
 
-function issueToken(seconds) {
+const issueToken = (seconds) => {
   const jti = crypto.randomUUID();
   const exp = Math.floor(Date.now() / 1000) + seconds;
   return { token: jwt.sign({ sub: "collector-1", jti, exp }, SECRET, { algorithm: "HS256" }), jti, exp };
 }
 
-function buildServer(withGate) {
+const buildServer = (withGate) => {
   const httpServer = http.createServer();
   const io = new Server(httpServer);
   const revoked = new Set();
@@ -68,10 +69,10 @@ function buildServer(withGate) {
     });
   });
 
-  function revoke(jti) {
+  const revoke = (jti) => {
     revoked.add(jti);
     if (withGate) byJti.get(jti)?.disconnect(true); // revocation channel
-  }
+  };
 
   return new Promise((ok) =>
     httpServer.listen(0, "127.0.0.1", () =>
@@ -80,7 +81,7 @@ function buildServer(withGate) {
   );
 }
 
-async function runTrial(withGate, scenario) {
+const runTrial = async (withGate, scenario) => {
   const srv = await buildServer(withGate);
   const lifetime = scenario === "expiration" ? 5 : 3600;
   const { token, jti, exp } = issueToken(lifetime);
@@ -88,37 +89,47 @@ async function runTrial(withGate, scenario) {
 
   await new Promise((ok, fail) => { client.once("connect", ok); client.once("connect_error", fail); });
 
-  // t0: instant at which the credential stops being valid
-  let t0;
-  if (scenario === "expiration") {
-    t0 = exp * 1000;
-  } else {
-    t0 = Date.now() + 3000;
-    setTimeout(() => srv.revoke(jti), t0 - Date.now());
-  }
-  srv.acceptedAfter.t0 = t0;
-
+  // t0: instant at which the credential actually stops being valid.
+  // Expiration: the exp claim. Revocation: the moment revoke() actually runs (not the planned moment),
+  // so that a late test timer is not counted as part of the residual window.
+  const state = { t0: null, revokeLateMs: null };
   let deliveredAfter = 0;
-  client.on("reading", () => { if (Date.now() >= t0) deliveredAfter++; });
+  client.on("reading", () => { if (state.t0 !== null && Date.now() >= state.t0) deliveredAfter++; });
   const sending = setInterval(() => client.emit("reading:send", Date.now()), 1000);
 
   const end = await new Promise((ok) => {
-    const limit = setTimeout(() => ok({ closed: false, t: Date.now() }), Math.max(0, t0 - Date.now()) + LIMIT_MS);
-    client.on("disconnect", () => { clearTimeout(limit); ok({ closed: true, t: Date.now() }); });
+    let limit = null;
+    const armLimit = (ms) => { limit = setTimeout(() => ok({ closed: false, t: Date.now() }), ms); };
+    client.on("disconnect", () => { if (limit) clearTimeout(limit); ok({ closed: true, t: Date.now() }); });
+    if (scenario === "expiration") {
+      state.t0 = exp * 1000;
+      srv.acceptedAfter.t0 = state.t0;
+      armLimit(Math.max(0, state.t0 - Date.now()) + LIMIT_MS);
+    } else {
+      const planned = Date.now() + 3000;
+      setTimeout(() => {
+        state.t0 = Date.now();
+        state.revokeLateMs = state.t0 - planned;
+        srv.acceptedAfter.t0 = state.t0;
+        armLimit(LIMIT_MS);
+        srv.revoke(jti);
+      }, 3000);
+    }
   });
 
   clearInterval(sending);
   client.close();
   srv.io.close();
   return {
-    windowMs: end.t - t0,
+    windowMs: end.t - state.t0,
+    revokeLateMs: state.revokeLateMs,
     closed: end.closed,
     deliveredAfter,
     acceptedAfter: srv.acceptedAfter.n,
   };
 }
 
-function median(v) { const s = [...v].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+const median = (v) => { const s = [...v].sort((a, b) => a - b); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
 
 (async () => {
   console.log(`socket.io ${require("socket.io/package.json").version} · node ${process.version} · ${REPETITIONS} repetitions · limit ${LIMIT_MS / 1000} s`);
@@ -126,7 +137,11 @@ function median(v) { const s = [...v].sort((a, b) => a - b); const m = s.length 
   for (const scenario of ["expiration", "revocation"]) {
     for (const withGate of [false, true]) {
       const r = [];
-      for (let i = 0; i < REPETITIONS; i++) r.push(await runTrial(withGate, scenario));
+      for (let i = 0; i < REPETITIONS; i++) {
+        const x = await runTrial(withGate, scenario);
+        r.push(x);
+        if (process.env.DETAIL) console.error(`${scenario} · ${withGate ? "B" : "A"} · run ${i + 1}: window ${x.closed ? x.windowMs + " ms" : "censored"}` + (x.revokeLateMs !== null ? ` (test timer fired ${x.revokeLateMs} ms after the planned moment; not counted)` : ""));
+      }
       const censored = r.filter((x) => !x.closed).length;
       rows.push({
         scenario,
