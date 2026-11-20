@@ -9,6 +9,7 @@ version: "pcc-2026"
 license: MIT
 repository-code: "https://github.com/Lywhena/swes"
 date-released: "2026-11-17"
+doi: "10.5281/zenodo.24397038"
 keywords:
   - Socket.IO
   - WebSocket
