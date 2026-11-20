@@ -54,7 +54,7 @@ const scenario = async (name, serverOptions, clientOptions, tryInjection) => {
   }
 
   const withSid = clientUrls.filter((u) => /[?&]sid=/.test(u)).length;
-  if (process.env.SHOW) console.log(name, clientUrls.map((u) => u.replace(/sid=[^&]+/, "sid=<SID>").replace(/t=[^&]+/, "t=<T>")));
+  if (process.env.SHOW) console.log(name, clientUrls.map((u) => u.replace(/sid=[^&]+/, "sid=<SID>").replace(/([?&])t=[^&]+/, "$1t=<T>")));
   const result = {
     scenario: name,
     connected: error ? `no (${error})` : "yes",
