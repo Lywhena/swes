@@ -5,7 +5,7 @@
   "description": "Preliminary experiments for the SWES project: residual authorization window and session identifier in the URL with Socket.IO 4.8.4",
   "license": "MIT",
   "author": "Helena Pires Veltri",
-  "engines": { "node": ">=18" },
+  "engines": { "node": ">=22" },
   "scripts": {
     "window": "node residual-window.js 10 20",
     "window:quick": "node residual-window.js 2 5",
