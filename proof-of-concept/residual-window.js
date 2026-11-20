@@ -4,8 +4,12 @@
 //
 // Usage: node residual-window.js [repetitions] [limitSeconds]
 // DETAIL=1 node residual-window.js ... also prints each run (to stderr), without changing the final table.
+// Every run is also saved to results/residual-window-runs-<os>-<repetitions>x<limit>s.json and .csv.
 // Local lab only: server and client run on 127.0.0.1, with no external requests.
 "use strict";
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const http = require("node:http");
 const { Server } = require("socket.io");
 const { io: connect } = require("socket.io-client");
@@ -134,12 +138,24 @@ const median = (v) => { const s = [...v].sort((a, b) => a - b); const m = s.leng
 (async () => {
   console.log(`socket.io ${require("socket.io/package.json").version} · node ${process.version} · ${REPETITIONS} repetitions · limit ${LIMIT_MS / 1000} s`);
   const rows = [];
+  const runs = [];
   for (const scenario of ["expiration", "revocation"]) {
     for (const withGate of [false, true]) {
       const r = [];
       for (let i = 0; i < REPETITIONS; i++) {
         const x = await runTrial(withGate, scenario);
         r.push(x);
+        runs.push({
+          scenario,
+          config: withGate ? "B" : "A",
+          run: i + 1,
+          censored: !x.closed,
+          window_ms: x.closed ? x.windowMs : null, // empty when the connection was still active at the limit
+          observed_ms: x.windowMs,
+          revoke_late_ms: x.revokeLateMs,
+          delivered_after_t0: x.deliveredAfter,
+          accepted_after_t0: x.acceptedAfter,
+        });
         if (process.env.DETAIL) console.error(`${scenario} · ${withGate ? "B" : "A"} · run ${i + 1}: window ${x.closed ? x.windowMs + " ms" : "censored"}` + (x.revokeLateMs !== null ? ` (test timer fired ${x.revokeLateMs} ms after the planned moment; not counted)` : ""));
       }
       const censored = r.filter((x) => !x.closed).length;
@@ -155,5 +171,22 @@ const median = (v) => { const s = [...v].sort((a, b) => a - b); const m = s.leng
     }
   }
   console.table(rows);
+
+  // Per-run data, so the summary above can be recomputed and checked
+  const platform = process.platform === "win32" ? "windows" : process.platform;
+  const base = path.join(__dirname, "results", `residual-window-runs-${platform}-${REPETITIONS}x${LIMIT_MS / 1000}s`);
+  fs.mkdirSync(path.dirname(base), { recursive: true });
+  const meta = {
+    socketio: require("socket.io/package.json").version,
+    node: process.version,
+    os: `${os.type()} ${os.release()}`,
+    repetitions: REPETITIONS,
+    limit_s: LIMIT_MS / 1000,
+    finished_at: new Date().toISOString(),
+  };
+  fs.writeFileSync(base + ".json", JSON.stringify({ meta, summary: rows, runs }, null, 2) + "\n");
+  const cols = ["scenario", "config", "run", "censored", "window_ms", "observed_ms", "revoke_late_ms", "delivered_after_t0", "accepted_after_t0"];
+  fs.writeFileSync(base + ".csv", [cols.join(","), ...runs.map((x) => cols.map((c) => x[c] ?? "").join(","))].join("\n") + "\n");
+  console.log(`per-run data saved to ${path.relative(process.cwd(), base)}.json and .csv`);
   process.exit(0);
 })();
