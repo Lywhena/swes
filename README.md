@@ -1,4 +1,5 @@
 # SWES: prova de conceito
+[![DOI](https://zenodo.org/badge/1462045890.svg)](https://doi.org/10.5281/zenodo.24397037)
 
 Material de apoio ao Projeto de Conclusão de Curso **"SWES: Middleware Orientado pelo OWASP ASVS para Autorização Contínua em Servidores Socket.IO"** (Ciência da Computação, URI Santo Ângelo, 2026). Contém os dois experimentos preliminares citados no PCC. O middleware SWES em si será desenvolvido na etapa seguinte (TCC).
 
@@ -55,4 +56,12 @@ Resultado obtido (`results/sid-in-url-linux.txt`, socket.io 4.8.4, engine.io 6.6
 
 ## Licença e citação
 
-Código sob licença MIT (ver `LICENSE`). Para citar, use os dados de `CITATION.cff` e a versão (tag) `pcc-2026`.
+Código sob licença MIT (ver `LICENSE`).
+
+## Como citar
+
+Se usar este material, cite a versão arquivada no Zenodo:
+
+> Veltri, H. P. (2026). *SWES: proof of concept of the residual authorization window in Socket.IO* (versão pcc-2026) [Software]. Zenodo. https://doi.org/10.5281/zenodo.24397038
+
+A versão citada no PCC corresponde à tag [`pcc-2026`](https://github.com/Lywhena/swes/tree/pcc-2026). O DOI do selo acima (10.5281/zenodo.24397037) reúne todas as versões e aponta sempre para a mais recente.

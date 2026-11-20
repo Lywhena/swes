@@ -7,9 +7,9 @@ authors:
     affiliation: "Universidade Regional Integrada do Alto Uruguai e das Missões (URI), Santo Ângelo, Brazil"
 version: "pcc-2026"
 license: MIT
-# After creating the repository, fill in the two lines below and remove the "#":
-# repository-code: "https://github.com/YOUR-USERNAME/swes"
-# date-released: "2026-MM-DD"
+repository-code: "https://github.com/Lywhena/swes"
+date-released: "2026-11-17"
+doi: "10.5281/zenodo.24397038"
 keywords:
   - Socket.IO
   - WebSocket
